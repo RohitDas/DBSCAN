@@ -27,16 +27,26 @@ def read_data(filepath):
             X.append([float(e) for e in line.strip().split(',')])
     return np.array(X)
 
+def dist_func(point_1, point_2,metric="euclidean"):
+    """
+        This implements the distance function.
+    """
+    return metrics.pairwise_distances(point_1, point_2, metric=metric)[0][0]
+
 def range_query(X,P,eps):
     """
         This function takes the DB, a point P, and returns a set
         of tuples of the form (Q, idx), where idx is the index into
         the original databases.
     """
-    return set([])
+    neighbours = set([])
+    for idx, point in enumerate(X):
+        if dist_func(np.array([point]), np.array([P])) <= eps:
+            neighbours.add((tuple(point.tolist()), idx))
+    return neighbours
 
 def difference(points, N):
-    pass
+    return points.difference(set([N]))
 
 # To be implemented
 def dbscan(X, eps, minpts):
@@ -61,8 +71,9 @@ def dbscan(X, eps, minpts):
     # 1 -> core
     # 2 -> Noise
     C = 0
-    label = np.zeroes(X.shape[0])
+    label = np.zeros(X.shape[0])
     for idx, point in enumerate(X):
+        print(idx)
         if label[idx] != 0:
             continue
         
@@ -74,18 +85,20 @@ def dbscan(X, eps, minpts):
         C = C + 1
         label[idx] = C
 
-        seed_set = difference(neighbours, point)
+        seed_set = difference(neighbours, (tuple(point.tolist()), idx))
         while seed_set:
             Q = seed_set.pop()
+            print(Q)
             if label[Q[1]] == 2:
                 label[Q[1]] = C
             if label[Q[1]] != 0:
                 continue
 
             label[Q[1]] = C
-            neighbours = range_query(X, Q, eps)
+            neighbours = range_query(X, np.array(Q[0]), eps)
             if len(neighbours) >= minpts:
-                seed_set.union_update(neighbours)
+                seed_set.update(neighbours)
+    print(label)
     return [[], []]
 
 
