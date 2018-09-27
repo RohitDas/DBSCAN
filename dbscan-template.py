@@ -40,10 +40,9 @@ def range_query(X,P,eps):
         the original databases.
     """
     neighbours = set([])
-    for idx, point in enumerate(X):
-        if dist_func(np.array([point]), np.array([P])) <= eps:
-            neighbours.add((tuple(point.tolist()), idx))
-    return neighbours
+    pairwise_distances = metrics.pairwise_distances(X, np.array([P]))
+    indices_of_truth = np.where(pairwise_distances < eps)[0]
+    return set(indices_of_truth.tolist())
 
 def difference(points, N):
     return points.difference(set([N]))
@@ -65,41 +64,43 @@ def dbscan(X, eps, minpts):
         The meaning of the output is as follows: the first list from the output tells us: X[0] is a noise point, X[1],X[5],X[6] belong to cluster 1 and X[2],X[3],X[4] belong to cluster 0; the second list tell us X[1] and X[4] are the only two core points
 
         '''
-    print("Size of the array: ", X.shape)
     #Initializing label numpy array with zeros.
     # 0 -> undefined
     # 1 -> core
     # 2 -> Noise
     C = 0
     label = np.zeros(X.shape[0])
+    core_points = []
     for idx, point in enumerate(X):
-        print(idx)
         if label[idx] != 0:
             continue
         
         neighbours = range_query(X, point, eps)
         if len(neighbours) < minpts:
-            label[idx] = 2
+            label[idx] = -1
             continue
 
         C = C + 1
         label[idx] = C
-
-        seed_set = difference(neighbours, (tuple(point.tolist()), idx))
+        core_points.append(idx)
+        seed_set = difference(neighbours, idx)
         while seed_set:
-            Q = seed_set.pop()
-            print(Q)
-            if label[Q[1]] == 2:
-                label[Q[1]] = C
-            if label[Q[1]] != 0:
+            Q_idx = seed_set.pop()
+            if label[Q_idx] == 2:
+                label[Q_idx] = C
+            if label[Q_idx] != 0:
                 continue
 
-            label[Q[1]] = C
-            neighbours = range_query(X, np.array(Q[0]), eps)
+            label[Q_idx] = C
+            neighbours = range_query(X, X[Q_idx], eps)
             if len(neighbours) >= minpts:
+                core_points.append(Q_idx)
                 seed_set.update(neighbours)
-    print(label)
-    return [[], []]
+
+    
+    not_noise_labels = np.where(label > 0)
+    label[not_noise_labels] -= 1
+    return [label.tolist(), core_points]
 
 
 
